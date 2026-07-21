@@ -5,6 +5,20 @@ All notable changes in GCL will be documented in this file.
 The format is based on [Keep a Changelog].
 This project adheres to [Semantic Versioning].
 
+## [UNRELEASED]
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
 ## [0.1.0] - 2026-07-21
 
 ### Added
@@ -20,3 +34,4 @@ This project adheres to [Semantic Versioning].
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Mod Menu]: https://github.com/TerraformersMC/ModMenu
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
+[UNRELEASED]: https://github.com/GiienaAstrella/gcl/compare/v0.1.0...HEAD
