@@ -50,7 +50,7 @@ repositories {
 In `gradle.properties`, add the following
 
 ``` properties
-gcl_version=gcl_version=0.1.0-fed2d1d
+gcl_version=gcl_version=0.1.0
 ```
 
 ### Multi-loader

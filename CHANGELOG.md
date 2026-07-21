@@ -5,7 +5,7 @@ All notable changes in GCL will be documented in this file.
 The format is based on [Keep a Changelog].
 This project adheres to [Semantic Versioning].
 
-## [UNRELEASED]
+## [0.1.0] - 2026-07-21
 
 ### Added
 
@@ -16,17 +16,7 @@ This project adheres to [Semantic Versioning].
   On NeoForge, this is done natively.
   On Fabric, this is done as an integration with [Mod Menu].
 
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
-
+[0.1.0]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.1.0
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Mod Menu]: https://github.com/TerraformersMC/ModMenu
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[UNRELEASED]: https://github.com/GiienaAstrella/gcl/compare/b774fd3672dd92e0cca596ea625c92b40038421b...HEAD
