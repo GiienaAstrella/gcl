@@ -1,8 +1,7 @@
 package me.giiena.config.impl;
 
-import me.giiena.config.ConfigConstants;
 import me.giiena.config.api.Config;
-import me.giiena.config.platform.Services;
+import me.giiena.config.impl.platform.Services;
 import com.google.common.base.Preconditions;
 
 import java.nio.file.Path;

@@ -5,7 +5,7 @@ import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.core.io.ParsingMode;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.electronwill.nightconfig.toml.TomlWriter;
-import me.giiena.config.ConfigConstants;
+import me.giiena.config.impl.ConfigConstants;
 import com.google.common.base.Preconditions;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -30,6 +30,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 @NullMarked
+@SuppressWarnings("unused")
 public class Config {
     private final String modID;
     private final Type type;

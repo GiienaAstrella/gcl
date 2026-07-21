@@ -16,13 +16,13 @@
     "environment": "*",
     "entrypoints": {
         "main": [
-            "me.giiena.config.FabricConfig"
+            "me.giiena.config.impl.FabricConfig"
         ],
         "client": [
-            "me.giiena.config.FabricConfigClient"
+            "me.giiena.config.impl.FabricConfigClient"
         ],
         "modmenu": [
-            "me.giiena.config.integration.ModMenuPlugin"
+            "me.giiena.config.impl.integration.ModMenuPlugin"
         ]
     },
     "depends": {

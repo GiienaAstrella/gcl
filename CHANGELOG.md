@@ -17,6 +17,11 @@ This project adheres to [Semantic Versioning].
   For example, `0.2.0+26.2` becomes `0.2.0-26.2`.
   Going forward, `HEAD` versions are numbered as `NEXT_SEMVER-COMMIT_HASH+MC_VERSION`, again
   swapping `+` with `-` when passing to Maven.
+- `IPlatformHelper` and implementations, network code, and loader init are now under the `impl`
+  package.
+  Consumers of GCL should not be interacting with these interface and classes, they are considered
+  API internals.
+  Package `impl` is now also annotated with `@ApiStatus.Internal`.
 
 ### Deprecated
 

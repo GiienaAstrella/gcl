@@ -5,6 +5,7 @@ import me.giiena.config.impl.ConfigRegistryImpl;
 import java.util.EnumMap;
 import java.util.Optional;
 
+@SuppressWarnings("unused")
 public final class ConfigRegistry {
     /**
      * Registers a config for {@code modID}.
@@ -13,7 +14,6 @@ public final class ConfigRegistry {
      * If {@code modID} will only ever have one config file, consider registering with
      * {@link #registerSingle(String, Config.Type)}}.
      */
-    @SuppressWarnings("unused")
     public static Config register(String modID, Config.Type type) {
         return ConfigRegistryImpl.register(modID, type);
     }
@@ -46,7 +46,6 @@ public final class ConfigRegistry {
     /**
      * Reloads all configs for {@code modID}.
      */
-    @SuppressWarnings("unused")
     public static void reloadAll(String modID) {
         ConfigRegistryImpl.reloadAll(modID);
     }

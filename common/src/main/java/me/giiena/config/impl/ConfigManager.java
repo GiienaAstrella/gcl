@@ -1,8 +1,8 @@
 package me.giiena.config.impl;
 
-import me.giiena.config.ConfigConstants;
 import me.giiena.config.api.Config;
-import me.giiena.config.platform.Services;
+import me.giiena.config.impl.network.ConfigPayload;
+import me.giiena.config.impl.platform.Services;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Optional;
@@ -17,7 +17,8 @@ public class ConfigManager {
         for (Config config : ConfigRegistryImpl.getAllCommons()) {
             ConfigConstants.LOG.info("Syncing common config for {} with {}",
                     config.getModID(), player.getName().getString());
-            Services.PLATFORM.sendSyncPacket(player, config.getModID(), config.toml());
+            Services.PLATFORM.sendPacketToClient(player, new ConfigPayload(config.getModID(),
+                    config.toml()));
         }
     }
 
@@ -29,7 +30,8 @@ public class ConfigManager {
         for (Config config : ConfigRegistryImpl.getAllCommons()) {
             ConfigConstants.LOG.info("Broadcasting common config for {}", config.getModID());
             config.load();
-            Services.PLATFORM.broadcastSyncPacket(config.getModID(), config.toml());
+            Services.PLATFORM.broadcastPacketToClients(new ConfigPayload(config.getModID(),
+                    config.toml()));
         }
     }
 
@@ -42,7 +44,7 @@ public class ConfigManager {
         config.ifPresent(conf -> {
             ConfigConstants.LOG.info("Broadcasting common config for {}", conf.getModID());
             conf.load();
-            Services.PLATFORM.broadcastSyncPacket(modID, conf.toml());
+            Services.PLATFORM.broadcastPacketToClients(new ConfigPayload(modID, conf.toml()));
         });
     }
 
