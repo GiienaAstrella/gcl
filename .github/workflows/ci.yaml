@@ -40,6 +40,8 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-cleanup: on-success
+          dependency-graph: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+            'generate-and-submit' || 'disabled' }}
       - name: Restore Fabric Loom cache
         id: loom-cache
         uses: actions/cache/restore@v6
@@ -61,7 +63,12 @@ jobs:
           restore-keys: |
             loom-${{ runner.os }}-
       - name: Build
-        run: ./gradlew build --stacktrace
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: ./gradlew build --stacktrace
       - name: Save Fabric Loom cache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache/save@v6
@@ -188,19 +195,3 @@ jobs:
             -DgeneratePom=true \
             -Durl=https://maven.pkg.github.com/${{ github.repository }} \
             -DrepositoryId=github
-
-  dependency-submission:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 25
-      - name: Generate and submit dependency graph
-        uses: gradle/actions/dependency-submission@v6
