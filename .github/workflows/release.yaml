@@ -1,0 +1,167 @@
+name: release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+      packages: write
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: 1.26
+      - name: Install Changelog
+        run: go install giiena.me/changelog@v0.4.0
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+          cache-cleanup: on-success
+      - name: Restore Fabric Loom cache
+        id: loom-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .gradle/loom-cache
+          key: >-
+            loom-${{ runner.os }}-${{ hashFiles(
+              '**/build.gradle',
+              '**/build.gradle.kts',
+              '**/settings.gradle',
+              '**/settings.gradle.kts',
+              '**/gradle.properties',
+              'gradle/libs.versions.toml',
+              'gradle/wrapper/gradle-wrapper.properties',
+              'build-logic/**/*.gradle',
+              'build-logic/**/*.gradle.kts',
+              'build-logic/**/*.kt'
+            ) }}
+          restore-keys: |
+            loom-${{ runner.os }}-
+      - name: Build
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 30
+          max_attempts: 5
+          retry_wait_seconds: 30
+          command: ./gradlew build --stacktrace
+      - name: Generate release notes
+        run: |
+          changelog get "${{ github.ref_name }}" > RELEASE.md
+          sed -i '1s/^## \[.*\] - .*/## Changelog/' RELEASE.md
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --draft \
+            --title "${{ github.ref_name }}" \
+            --notes-file RELEASE.md
+      - name: Resolve release coordinates
+        id: coords
+        run: |
+          GROUP=$(./gradlew -q properties | grep '^group:' | awk '{print $2}')
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "group=${GROUP}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Configure Maven credentials
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>\${env.GITHUB_ACTOR}</username>
+                <password>\${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+      - name: Publish Common release
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MAIN_JAR=$(ls common/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
+          SOURCES_JAR=$(ls common/build/libs/*-sources.jar 2>/dev/null || true)
+          JAVADOC_JAR=$(ls common/build/libs/*-javadoc.jar 2>/dev/null || true)
+          if [ -n "$SOURCES_JAR" ] && [ -n "$JAVADOC_JAR" ]; then
+            mvn -B deploy:deploy-file \
+              -Dfile="$MAIN_JAR" \
+              -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
+              -Dclassifiers=sources,javadoc \
+              -Dtypes=jar,jar \
+              -DgroupId=${{ steps.coords.outputs.group }} \
+              -DartifactId=gcl-common \
+              -Dversion=${{ steps.coords.outputs.version }} \
+              -Dpackaging=jar \
+              -DgeneratePom=true \
+              -Durl=https://maven.pkg.github.com/${{ github.repository }} \
+              -DrepositoryId=github
+          else
+            mvn -B deploy:deploy-file \
+              -Dfile="$MAIN_JAR" \
+              -DgroupId=${{ steps.coords.outputs.group }} \
+              -DartifactId=gcl-common \
+              -Dversion=${{ steps.coords.outputs.version }} \
+              -Dpackaging=jar \
+              -DgeneratePom=true \
+              -Durl=https://maven.pkg.github.com/${{ github.repository }} \
+              -DrepositoryId=github
+          fi
+      - name: Publish Fabric release
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MAIN_JAR=$(ls fabric/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
+          SOURCES_JAR=$(ls fabric/build/libs/*-sources.jar)
+          JAVADOC_JAR=$(ls fabric/build/libs/*-javadoc.jar)
+          mvn -B deploy:deploy-file \
+            -Dfile="$MAIN_JAR" \
+            -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
+            -Dclassifiers=sources,javadoc \
+            -Dtypes=jar,jar \
+            -DgroupId=${{ steps.coords.outputs.group }} \
+            -DartifactId=gcl-fabric \
+            -Dversion=${{ steps.coords.outputs.version }} \
+            -Dpackaging=jar \
+            -DgeneratePom=true \
+            -Durl=https://maven.pkg.github.com/${{ github.repository }} \
+            -DrepositoryId=github
+      - name: Publish NeoForge release
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MAIN_JAR=$(ls neoforge/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
+          SOURCES_JAR=$(ls neoforge/build/libs/*-sources.jar)
+          JAVADOC_JAR=$(ls neoforge/build/libs/*-javadoc.jar)
+          mvn -B deploy:deploy-file \
+            -Dfile="$MAIN_JAR" \
+            -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
+            -Dclassifiers=sources,javadoc \
+            -Dtypes=jar,jar \
+            -DgroupId=${{ steps.coords.outputs.group }} \
+            -DartifactId=gcl-neoforge \
+            -Dversion=${{ steps.coords.outputs.version }} \
+            -Dpackaging=jar \
+            -DgeneratePom=true \
+            -Durl=https://maven.pkg.github.com/${{ github.repository }} \
+            -DrepositoryId=github
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false
