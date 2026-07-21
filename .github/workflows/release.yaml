@@ -72,9 +72,11 @@ jobs:
         id: coords
         run: |
           GROUP=$(./gradlew -q properties | grep '^group:' | awk '{print $2}')
-          VERSION=${GITHUB_REF_NAME#v}
+          TAG_VERSION=${GITHUB_REF_NAME#v}
+          MOD_VERSION=$(echo "${TAG_VERSION}" | sed -E 's/\+.*//')
+          MC_VERSION=$(echo "${TAG_VERSION}" | sed -E 's/^[^+]*\+//')
           echo "group=${GROUP}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version=${MOD_VERSION}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Configure Maven credentials
         run: |
           mkdir -p ~/.m2

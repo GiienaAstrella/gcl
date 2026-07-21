@@ -11,6 +11,13 @@ This project adheres to [Semantic Versioning].
 
 ### Changed
 
+- Version numbering now includes the Minecraft version as build metadata (e.g. `+26.2` for 
+  Minecraft 26.2).
+  Maven does not support `+`, so replace it with `-`.
+  For example, `0.2.0+26.2` becomes `0.2.0-26.2`.
+  Going forward, `HEAD` versions are numbered as `NEXT_SEMVER-COMMIT_HASH+MC_VERSION`, again
+  swapping `+` with `-` when passing to Maven.
+
 ### Deprecated
 
 ### Removed

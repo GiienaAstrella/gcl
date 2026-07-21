@@ -102,9 +102,11 @@ jobs:
         run: |
           GROUP=$(./gradlew -q properties | grep '^group:' | awk '{print $2}')
           BASE_VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
+          MOD_VERSION=$(echo "${BASE_VERSION}" | sed -E 's/\+.*//')
+          MC_VERSION=$(echo "${BASE_VERSION}" | sed -E 's/^[^+]*\+//')
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "group=${GROUP}" >> "$GITHUB_OUTPUT"
-          echo "version=${BASE_VERSION}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "version=${MOD_VERSION}-${SHORT_SHA}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Configure Maven credentials
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
