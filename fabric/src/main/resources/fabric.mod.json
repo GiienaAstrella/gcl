@@ -8,8 +8,8 @@
         "${mod_author}"
     ],
     "contact": {
-        "homepage": "https://fabricmc.net/",
-        "sources": "https://github.com/FabricMC/fabric-example-mod"
+        "homepage": "${homepage}",
+        "sources": "${sources}"
     },
     "license": "${license}",
     "icon": "${mod_id}.png",
@@ -31,8 +31,10 @@
         "minecraft": "~${minecraft_version}",
         "java": ">=${java_version}"
     },
-    "suggests": {
-        "another-mod": "*"
+    "custom": {
+        "modmenu": {
+            "badges": [ "library" ]
+        }
     }
 }
   
