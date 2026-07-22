@@ -2,6 +2,7 @@ package me.giiena.config.impl.client.screen;
 
 import me.giiena.config.impl.ConfigCommon;
 import me.giiena.config.api.Config;
+import me.giiena.config.impl.TranslationChecker;
 import me.giiena.config.impl.client.screen.component.ConfigEditBox;
 import me.giiena.config.impl.network.ConfigReloadPayload;
 import me.giiena.config.impl.platform.Services;
@@ -16,17 +17,15 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsSubScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.TextColor;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class ConfigEditScreen extends OptionsSubScreen {
     public static final Component RESET =
@@ -78,85 +77,85 @@ public class ConfigEditScreen extends OptionsSubScreen {
         }
     }
 
-    @SuppressWarnings("UnusedReturnValue")
+    @Override
+    public void onClose() {
+        TranslationChecker.done();
+        super.onClose();
+    }
+
+    @SuppressWarnings({"UnusedReturnValue", "unchecked"})
     protected ConfigEditScreen rebuild() {
         if (this.list != null) {
             this.list.clearEntries();
 
-            for (Object entry : this.buildEntries()) {
-                String labelKey;
-                Component label;
-                final AbstractWidget valueWidget;
-                if (entry instanceof String section) {
-                    labelKey = ConfigCommon.langKey(
-                            this.config.getModID(),
-                            "config." + this.config.getType().suffix(),
-                            "gui",
-                            section);
-                    label = Component.translatable(labelKey).withStyle(ChatFormatting.UNDERLINE);
-                    AbstractWidget labelWidget = new StringWidget(
-                            ConfigListScreen.BIG_BUTTON_WIDTH,
-                            Button.DEFAULT_HEIGHT,
-                            label,
-                            this.font);
+            final Map<String, Entry> entries = new LinkedHashMap<>();
 
-                    this.list.addSmall(labelWidget, null);
-                } else if (entry instanceof Config.Value<?> value) {
-                    labelKey = ConfigCommon.langKey(
-                            this.config.getModID(),
-                            "config." + this.config.getType().suffix(),
-                            "gui",
-                            value.path());
-                    label = Component.translatable(labelKey);
-                    AbstractWidget labelWidget = new StringWidget(
-                            ConfigListScreen.BIG_BUTTON_WIDTH,
-                            Button.DEFAULT_HEIGHT,
-                            label,
-                            this.font);
+            for (Config.Value<?> value : this.config.values()) {
+                String path = value.path();
+                List<String> paths = ConfigCommon.DOT_SPLITTER.splitToList(path);
+                Map<String, Entry> current = entries;
 
-                    Object defaultVal = value.getDefault();
-                    MutableComponent tooltip = Component.empty();
-                    if (defaultVal instanceof String) {
-                        valueWidget =
-                                this.createStringValue(value.path(), label, (String) value.get());
-                    } else if (defaultVal instanceof Integer) {
-                        valueWidget =
-                                this.createIntValue(value.path(), label, (Integer) value.get());
-                    } else if (defaultVal instanceof Boolean) {
-                        valueWidget =
-                                this.createBooleanValue(value.path(), label, (Boolean) value.get());
-                    } else if (value.get() != null) {
-                        ConfigEditBox box = new ConfigEditBox(
-                                this.font,
-                                Button.DEFAULT_WIDTH,
-                                Button.DEFAULT_HEIGHT,
-                                label);
-                        box.setEditable(false);
-                        box.setValue(value.get().toString());
-                        valueWidget = box;
-                        tooltip.append(Component.translatable(ConfigCommon.langKey(
-                                        "config.tooltip",
-                                        "gui",
-                                        "unsupported"))
-                                .withColor(TextColor.RED));
+                for (int i = 0; i < paths.size() - 1; i++) {
+                    String sectPath = ConfigCommon.DOT_JOINER.join(paths.subList(0, i + 1));
+
+                    Section section;
+                    if (current.get(paths.get(i)) instanceof Section exist) {
+                        section = exist;
                     } else {
-                        valueWidget = null;
+                        section = new Section(this.getTranslationComponent(sectPath),
+                                this.getTooltipComponent(sectPath));
+                        current.put(paths.get(i), section);
                     }
-                    this.config.comment(value.path()).ifPresent(c -> {
-                        if (valueWidget == null) return;
-                        if (!tooltip.getSiblings().isEmpty()) {
-                            tooltip.append(CommonComponents.NEW_LINE);
-                            tooltip.append(CommonComponents.NEW_LINE);
-                        }
-                        tooltip.append(c);
-                        valueWidget.setTooltip(Tooltip.create(tooltip));
-                    });
+                    current = section.entries;
+                }
 
-                    this.list.addSmall(labelWidget, valueWidget);
+                String leaf = paths.getLast();
+                Object defaultVal = value.getDefault();
+
+                switch (defaultVal) {
+                    case String _ -> {
+                        Config.Value<String> typed = (Config.Value<String>) value;
+                        current.put(leaf, this.createStringElement(path, typed, typed::set));
+                    }
+                    case Integer _ -> {
+                        Config.Value<Integer> typed = (Config.Value<Integer>) value;
+                        current.put(leaf, this.createIntElement(path, typed, typed::set));
+                    }
+                    case Boolean _ -> {
+                        Config.Value<Boolean> typed = (Config.Value<Boolean>) value;
+                        current.put(leaf, this.createBooleanElement(path, typed, typed::set));
+                    }
+                    default -> {
+                    }
                 }
             }
+
+            this.addEntries(entries);
         }
         return this;
+    }
+
+    protected void addEntries(Map<String, Entry> entries) {
+        if (this.list == null) return;
+
+        for (Entry entry : entries.values()) {
+            StringWidget label = new StringWidget(ConfigListScreen.BIG_BUTTON_WIDTH,
+                    Button.DEFAULT_HEIGHT,
+                    entry.name(),
+                    this.font);
+            Component tooltip = entry.tooltip();
+            if (tooltip != null) {
+                label.setTooltip(Tooltip.create(tooltip));
+            }
+
+            if (entry instanceof Section section) {
+                label.setMessage(section.name().copy().withStyle(ChatFormatting.UNDERLINE));
+                this.list.addBig(label);
+                this.addEntries(section.entries());
+            } else if (entry instanceof Element element) {
+                this.list.addSmall(label, element.widget());
+            }
+        }
     }
 
     protected void createResetButton() {
@@ -193,66 +192,47 @@ public class ConfigEditScreen extends OptionsSubScreen {
         this.setResetButtonState(true);
     }
 
-    private List<Object> buildEntries() {
-        List<Object> entries = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
-
-        for (Config.Value<?> value : this.config.values()) {
-            String path = value.path();
-            List<String> parts = List.of(path.split("\\."));
-
-            StringBuilder prefix = new StringBuilder();
-            for (String part : parts) {
-                if (!prefix.isEmpty()) prefix.append(".");
-                prefix.append(part);
-                String fullPath = prefix.toString();
-                if (config.get(fullPath) == null && seen.add(fullPath)) {
-                    entries.add(fullPath);
-                }
-            }
-
-            if (seen.add(path)) {
-                entries.add(value);
-            }
-        }
-
-        return entries;
+    private Component resolveBooleanValue(boolean value) {
+        return value ? CommonComponents.GUI_YES : CommonComponents.GUI_NO;
     }
 
-    protected AbstractWidget createStringValue(String path, Component label, String oldVal) {
-        ConfigEditBox box = new ConfigEditBox(
-                this.font,
+    protected Element createStringElement(final String path,
+                                          final Supplier<String> source,
+                                          final Consumer<String> target) {
+        ConfigEditBox box = new ConfigEditBox(this.font,
                 Button.DEFAULT_WIDTH,
                 Button.DEFAULT_HEIGHT,
-                label);
+                this.getTranslationComponent(path));
         box.setEditable(true);
         box.setResponder(resp -> {
-            if (!resp.equals(oldVal)) {
+            if (!resp.equals(source.get())) {
                 this.onChanged();
                 this.resetManager.remove(path);
-                this.resetManager.add(
-                        path,
-                        v -> this.config.set(path, v),
+                this.resetManager.add(path,
+                        target,
                         resp,
                         v -> {
                             box.setValue(v);
-                            this.config.set(path, v);
+                            target.accept(v);
                         },
-                        oldVal);
+                        source.get());
             } else {
                 this.resetManager.remove(path);
             }
         });
-        box.setValue(oldVal);
-        return box;
+        box.setValue(source.get());
+        return new Element(this.getTranslationComponent(path),
+                this.getTooltipComponent(path),
+                box);
     }
 
-    protected AbstractWidget createIntValue(String path, Component label, Integer oldVal) {
-        ConfigEditBox box = new ConfigEditBox(
-                this.font,
+    protected Element createIntElement(final String path,
+                                       final Supplier<Integer> source,
+                                       final Consumer<Integer> target) {
+        ConfigEditBox box = new ConfigEditBox(this.font,
                 Button.DEFAULT_WIDTH,
                 Button.DEFAULT_HEIGHT,
-                label);
+                this.getTranslationComponent(path));
         box.setEditable(true);
         box.setFilter(i -> {
             if (i.isEmpty()) return true;
@@ -264,7 +244,7 @@ public class ConfigEditScreen extends OptionsSubScreen {
             }
         });
         box.setResponder(resp -> {
-            if (oldVal.toString().equals(resp)) {
+            if (resp.equals(source.get().toString())) {
                 this.resetManager.remove(path);
                 return;
             }
@@ -278,58 +258,102 @@ public class ConfigEditScreen extends OptionsSubScreen {
 
             this.onChanged();
             this.resetManager.remove(path);
-            this.resetManager.add(
-                    path,
-                    v -> this.config.set(path, v),
+            this.resetManager.add(path,
+                    target,
                     newVal,
                     v -> {
                         box.setValue(v.toString());
-                        this.config.set(path, v);
+                        target.accept(v);
                     },
-                    oldVal);
+                    source.get());
         });
-        box.setValue(oldVal.toString());
-        return box;
+        box.setValue(source.get().toString());
+        return new Element(this.getTranslationComponent(path),
+                this.getTooltipComponent(path),
+                box);
     }
 
-    protected AbstractWidget createBooleanValue(
-            String path,
-            Component ignoredLabel,
-            Boolean oldVal) {
-        AtomicBoolean currentVal = new AtomicBoolean(oldVal);
+    protected Element createBooleanElement(final String path,
+                                           final Supplier<Boolean> source,
+                                           final Consumer<Boolean> target) {
+        AtomicBoolean current = new AtomicBoolean(source.get());
 
-        return Button.builder(
-                        this.resolveBooleanValue(oldVal),
-                        b -> {
-                            boolean newVal = !currentVal.get();
-                            currentVal.set(newVal);
-                            b.setMessage(this.resolveBooleanValue(newVal));
+        Button btn = Button.builder(this.resolveBooleanValue(source.get()),
+                b -> {
+                    boolean newVal = !current.get();
+                    current.set(newVal);
+                    b.setMessage(this.resolveBooleanValue(!source.get()));
 
-                            if (oldVal.equals(newVal)) {
-                                this.resetManager.remove(path);
-                                return;
-                            }
+                    if (newVal == source.get()) {
+                        this.resetManager.remove(path);
+                        return;
+                    }
 
-                            this.onChanged();
-                            this.resetManager.remove(path);
-                            this.resetManager.add(
-                                    path,
-                                    v -> this.config.set(path, v),
-                                    newVal,
-                                    v -> {
-                                        currentVal.set(v);
-                                        b.setMessage(this.resolveBooleanValue(v));
-                                        this.config.set(path, v);
-                                    },
-                                    oldVal);
-                        })
+                    this.onChanged();
+                    this.resetManager.remove(path);
+                    this.resetManager.add(path,
+                            target,
+                            !source.get(),
+                            v -> {
+                                current.set(v);
+                                b.setMessage(this.resolveBooleanValue(v));
+                                target.accept(v);
+                            },
+                            source.get());
+                })
                 .size(Button.DEFAULT_WIDTH, Button.DEFAULT_HEIGHT)
                 .build();
+        return new Element(this.getTranslationComponent(path),
+                this.getTooltipComponent(path),
+                btn);
     }
 
-    private Component resolveBooleanValue(boolean value) {
-        return value ? CommonComponents.GUI_YES : CommonComponents.GUI_NO;
+    protected Component getTranslationComponent(final String path) {
+        String translation = this.translationKey(path);
+        if (TranslationChecker.has(this.config, translation)) {
+            return Component.translatable(translation);
+        } else {
+            return Component.literal(path);
+        }
     }
+
+    @Nullable
+    protected Component getTooltipComponent(final String path) {
+        String translation = this.translationKey(path) + ".tooltip";
+        if (TranslationChecker.has(this.config, translation)) {
+            return Component.translatable(translation);
+        } else {
+            return this.config.getComment(path).map(Component::literal).orElse(null);
+        }
+    }
+
+    protected String translationKey(final String path) {
+        List<String> parts = List.of(this.config.getModID(), this.config.getType().suffix(), path);
+        return String.join(".", parts);
+    }
+
+    protected interface Entry {
+        Component name();
+
+        @Nullable
+        Component tooltip();
+    }
+
+    protected record Section(
+            Component name,
+            @Nullable Component tooltip,
+            Map<String, Entry> entries
+    ) implements Entry {
+        public Section(Component name, @Nullable Component tooltip) {
+            this(name, tooltip, new LinkedHashMap<>());
+        }
+    }
+
+    protected record Element(
+            Component name,
+            @Nullable Component tooltip,
+            AbstractWidget widget
+    ) implements Entry {}
 
     public static class ResetManager {
         private final Map<String, Entry<?>> entries = new LinkedHashMap<>();
