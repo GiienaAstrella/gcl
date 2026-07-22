@@ -5,6 +5,7 @@ import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.core.io.ParsingMode;
 import com.electronwill.nightconfig.toml.TomlFormat;
 import com.electronwill.nightconfig.toml.TomlWriter;
+import me.giiena.config.impl.ConfigCommon;
 import me.giiena.config.impl.ConfigConstants;
 import com.google.common.base.Preconditions;
 import org.jspecify.annotations.NullMarked;
@@ -26,7 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @NullMarked
@@ -37,8 +38,9 @@ public class Config {
     private final Path filePath;
     private final CommentedFileConfig config;
     private final Map<String, Value<?>> values = new LinkedHashMap<>();
-    private final Map<String, Value<?>> synced = new LinkedHashMap<>();
     private final Map<String, String> comments = new LinkedHashMap<>();
+
+    private boolean synced = false;
 
     public Config(String modID, Type type, Path filePath) {
         this.modID = modID;
@@ -66,20 +68,43 @@ public class Config {
         this.ensureParentDirExists();
         ConfigConstants.LOG.info("Loading {} for {}", this.getFilePath(), this.getModID());
 
+        boolean corrected = false;
         if (Files.exists(this.filePath)) {
             try (CommentedFileConfig onDisk =
                          CommentedFileConfig.builder(this.filePath).sync().build()) {
                 onDisk.load();
-                for (String path : this.values.keySet()) {
+                for (Map.Entry<String, Value<?>> entry : this.values.entrySet()) {
+                    String path = entry.getKey();
                     Object raw = onDisk.get(path);
-                    if (raw != null) this.config.set(path, raw);
+                    if (raw == null) {
+                        this.config.set(path, entry.getValue().getDefault());
+                        corrected = true;
+                        continue;
+                    }
+
+                    Optional<?> coerced = entry.getValue().coerce(raw);
+                    if (coerced.isPresent()) {
+                        this.config.set(path, coerced.get());
+                    } else {
+                        ConfigConstants.LOG.error("Invalid value for {}, falling back to default!",
+                                path);
+                        this.config.set(path, entry.getValue().getDefault());
+                        corrected = true;
+                    }
                 }
             }
+        } else {
+            for (Map.Entry<String, Value<?>> entry : this.values.entrySet()) {
+                this.config.set(entry.getKey(), entry.getValue().getDefault());
+            }
+            corrected = true;
         }
 
         for (Value<?> value : this.values.values()) {
-            value.load();
+            value.clearCache();
         }
+
+        if (corrected) this.save();
     }
 
     public void save() {
@@ -88,29 +113,10 @@ public class Config {
     }
 
     /**
-     * Returns the value for {@code path}.
-     * If {@code isSynced()} returns {@code true}, the returned value will be that received from
-     * the server, not the one locally configured.
+     * Returns config comment at {@code path}.
      */
-    @SuppressWarnings("unchecked")
-    @Nullable
-    public <T> T get(String path) {
-        Value<T> val;
-        if (this.isSynced()) {
-            val = (Value<T>) this.synced.get(path);
-        } else {
-            val = (Value<T>) this.values.get(path);
-        }
-        return (val != null) ? val.get() : null;
-    }
-
-    /**
-     * Returns the value for {@code path}, if it exists.
-     * Otherwise, returns {@code defaultValue}.
-     */
-    public <T> T getOrDefault(String path, T defaultValue) {
-        T value = this.get(path);
-        return (value != null) ? value : defaultValue;
+    public Optional<String> getComment(String path) {
+        return Optional.ofNullable(this.comments.get(path));
     }
 
     /**
@@ -118,7 +124,10 @@ public class Config {
      */
     @SuppressWarnings("unused")
     public void clearSyncedValues() {
-        this.synced.clear();
+        for (Map.Entry<String, Value<?>> entry : this.values.entrySet()) {
+            entry.getValue().clearCache();
+        }
+        this.synced = false;
     }
 
     /**
@@ -126,7 +135,7 @@ public class Config {
      */
     @SuppressWarnings("unused")
     public boolean isSynced() {
-        return !this.synced.isEmpty();
+        return this.synced;
     }
 
     /**
@@ -139,11 +148,11 @@ public class Config {
                 new ByteArrayInputStream(data),
                 raw,
                 ParsingMode.REPLACE);
+
         for (Map.Entry<String, Value<?>> entry : this.values.entrySet()) {
-            Value<?> syncedVal = entry.getValue().copy(raw);
-            syncedVal.load();
-            this.synced.put(entry.getKey(), syncedVal);
+            entry.getValue().setSynced(raw.get(entry.getKey()));
         }
+        this.synced = true;
     }
 
     /**
@@ -163,13 +172,6 @@ public class Config {
         return List.copyOf(this.values.values());
     }
 
-    /**
-     * Returns config comment at {@code path}.
-     */
-    public Optional<String> comment(String path) {
-        return Optional.ofNullable(this.comments.get(path));
-    }
-
     private void ensureParentDirExists() {
         Path parent = this.filePath.getParent();
         if (parent == null) return;
@@ -181,36 +183,31 @@ public class Config {
     }
 
     /**
-     * Opens a new section.
+     * Appends {@code comment} to the pending comment.
      */
-    public Builder section(String path) {
-        return new Builder(this)
-                .section(path);
+    public Builder comment(String comment) {
+        return new Builder(this).comment(comment);
     }
 
     /**
-     * Opens a new section and sets a comment for that section.
+     * Pushes a new section.
      */
-    @SuppressWarnings({"UnusedReturnValue", "unused"})
-    public Builder comment(String path, String comment) {
-        return new Builder(this)
-                .section(path)
-                .comment(comment);
+    public Builder push(String path) {
+        return new Builder(this).push(path);
     }
 
     /**
-     * Opens a new section and sets the value for that section, then closes the section.
+     * Defines an entry.
      */
-    @SuppressWarnings("unchecked")
-    public <T> void set(String path, T value) {
-        this.config.set(path, value);
-        Value<T> val = (Value<T>) this.values.get(path);
-        if (val != null) {
-            val.set(value);
-        } else {
-            val = new Value<>(this.config, path, value);
-            this.values.put(path, val);
-        }
+    public <T> Value<T> define(String path, T defaultValue) {
+        return new Builder(this).push(path).define(defaultValue);
+    }
+
+    /**
+     * Defines an entry.
+     */
+    public <T> Value<T> define(String path, T defaultValue, Predicate<T> validator) {
+        return new Builder(this).push(path).define(defaultValue, validator);
     }
 
     public enum Type {
@@ -224,163 +221,220 @@ public class Config {
     }
 
     @NullMarked
-    public static final class Value<T> implements Supplier<T> {
-        private final com.electronwill.nightconfig.core.Config config;
+    public static class Value<T> implements Supplier<T> {
+        private final Config config;
         private final String path;
-        private final T defaultValue;
-        @Nullable
-        private T value;
+        private final Supplier<T> defaultSupplier;
+        private final Predicate<T> validator;
 
-        Value(com.electronwill.nightconfig.core.Config config, String path, T defaultValue) {
+        @Nullable
+        private T value = null;
+
+        protected Value(Config config,
+                        String path,
+                        Supplier<T> defaultSupplier,
+                        Predicate<T> validator) {
+            Preconditions.checkArgument(validator.test(defaultSupplier.get()),
+                    "Default supplier fails its own validator");
+
             this.config = config;
             this.path = path;
-            this.defaultValue = defaultValue;
+            this.defaultSupplier = defaultSupplier;
+            this.validator = validator;
         }
 
+        /**
+         * Returns the path for this config value.
+         */
         public String path() {
             return this.path;
         }
 
-        @Override
-        @Nullable
+        /**
+         * Returns the cached value.
+         * If no value has been loaded, load and cache it.
+         * If this is a value of {@link Type#COMMON}, this value may be the synced value.
+         */
         public T get() {
+            Preconditions.checkNotNull(this.config, "Cannot get config value before building");
+            if (this.value == null) {
+                this.value = this.getRaw(this.config, this.path, this.defaultSupplier);
+            }
             return this.value;
         }
 
+        @SuppressWarnings("unchecked")
+        protected T getRaw(Config config, String path, Supplier<T> defaultSupplier) {
+            Object raw = config.config.get(path);
+            if (raw == null) {
+                return defaultSupplier.get();
+            }
+
+            if (this.getDefault() instanceof Integer && raw instanceof Long val) {
+                return (T)(Integer) val.intValue();
+            } else {
+                return (T) raw;
+            }
+        }
+
+        /**
+         * Returns the default value.
+         */
         public T getDefault() {
-            return this.defaultValue;
-        }
-
-        public void set(T value) {
-            this.value = value;
-        }
-
-        Value<T> copy(com.electronwill.nightconfig.core.Config config) {
-            return new Value<>(config, this.path, this.defaultValue);
+            return this.defaultSupplier.get();
         }
 
         @SuppressWarnings("unchecked")
-        void load() {
-            Object raw = this.config.get(this.path);
+        private Optional<T> coerce(Object raw) {
+            T candidate;
+            if (this.getDefault().getClass().isInstance(raw)) {
+                candidate = (T) raw;
+            } else if (this.getDefault() instanceof Integer && raw instanceof Long l) {
+                candidate = (T)(Integer) l.intValue();
+            } else {
+                return Optional.empty();
+            }
+            return this.validator.test(candidate) ? Optional.of(candidate) : Optional.empty();
+        }
+
+        /**
+         * Sets the value.
+         */
+        public void set(T value) {
+            Preconditions.checkNotNull(this.config, "Cannot set config value before building");
+            Preconditions.checkArgument(this.validator.test(value), "Invalid value for %s",
+                    this.path);
+            this.config.config.set(this.path, value);
+            this.value = value;
+        }
+
+        void setSynced(@Nullable Object raw) {
             if (raw == null) {
-                this.value = this.defaultValue;
+                this.clearCache();
                 return;
             }
-
-            if (this.defaultValue instanceof Integer && raw instanceof Long val) {
-                this.value = (T)(Integer) val.intValue();
-            } else {
-                this.value = (T) raw;
+            Optional<T> coerced = this.coerce(raw);
+            if (coerced.isEmpty()) {
+                ConfigConstants.LOG.warn("Ignoring invalid value for {}", this.path);
+                return;
             }
+            this.value = coerced.get();
+        }
+
+        /**
+         * Saves this value to disk.
+         */
+        public void save() {
+            this.config.save();
+        }
+
+        /**
+         * Clears the cached value.
+         */
+        public void clearCache() {
+            this.value = null;
         }
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     @NullMarked
     public static final class Builder {
         private final Config config;
-        private final Deque<String> stack = new ArrayDeque<>();
+        private final Deque<String> stack;
 
         @Nullable
         private String comment = null;
 
         private Builder(Config config) {
+            this(config, new ArrayDeque<>());
+        }
+
+        private Builder(Config config, Deque<String> stack) {
             this.config = config;
+            this.stack = stack;
+        }
+
+        private static String fullPath(Deque<String> stack) {
+            List<String> parts = new ArrayList<>(stack);
+            Collections.reverse(parts);
+            return ConfigCommon.DOT_JOINER.join(parts);
         }
 
         /**
-         * Opens a new section.
+         * Pushes a new section.
          */
-        public Builder section(String path) {
-            Preconditions.checkNotNull(path, "path cannot be null");
-            Preconditions.checkArgument(!path.isBlank(), "path cannot be blank");
-
-            if (!this.stack.isEmpty()) {
-                this.consumeComment(this.config.config::setComment, this.config.comments::put);
-            }
-
-            if (path.contains(".")) {
-                for (String part : path.split("\\.")) {
-                    this.stack.push(part);
-                }
-            } else {
-                this.stack.push(path);
-            }
-            return this;
+        public Builder push(String path) {
+            this.checkPath(path);
+            Deque<String> nextStack = new ArrayDeque<>(this.stack);
+            ConfigCommon.DOT_SPLITTER.split(path).forEach(nextStack::push);
+            this.consumeComment(fullPath(nextStack));
+            return new Builder(this.config, nextStack);
         }
 
         /**
          * Closes the current section.
          */
-        @SuppressWarnings("UnusedReturnValue")
-        public Builder close() {
-            Preconditions.checkState(!this.stack.isEmpty(), "close() without matching section()");
-            this.consumeComment(this.config.config::setComment, this.config.comments::put);
-            this.stack.pop();
-            return this;
+        public Builder pop() {
+            Preconditions.checkState(!this.stack.isEmpty(), "pop() without matching push()");
+            this.consumeComment(this.fullPath());
+            Deque<String> nextStack = new ArrayDeque<>(this.stack);
+            nextStack.pop();
+            return new Builder(config, nextStack);
         }
 
         /**
          * Closes {@code n} number of sections (bottom to top).
          */
-        @SuppressWarnings("UnusedReturnValue")
-        public Builder close(int n) {
-            for (int i = 0; i < n; i++) this.close();
+        public Builder pop(int n) {
+            for (int i = 0; i < n; i++) this.pop();
             return this;
         }
 
         /**
-         * Closes the section identified by {@code path}.
+         * Appends {@code comment} to the pending comment.
          */
-        @SuppressWarnings("unused")
-        public Builder close(String path) {
+        public Builder comment(String comment) {
+            Preconditions.checkNotNull(comment, "Comment cannot be null");
+            Preconditions.checkArgument(!comment.isBlank(), "Comment cannot be blank");
+            if (this.comment != null) {
+                this.comment += comment;
+            } else {
+                this.comment = comment;
+            }
+            return this;
+        }
+
+        /**
+         * Defines an entry.
+         */
+        public <T> Value<T> define(T defaultValue) {
+            return this.define(defaultValue, v -> true);
+        }
+
+        /**
+         * Defines an entry.
+         */
+        public <T> Value<T> define(T defaultValue, Predicate<T> validator) {
+            String path = this.fullPath();
+            Value<T> val = new Value<>(this.config, path, () -> defaultValue, validator);
+            this.config.values.put(path, val);
+            this.consumeComment(path);
+            return val;
+        }
+
+        private void checkPath(String path) {
             Preconditions.checkNotNull(path, "path cannot be null");
             Preconditions.checkArgument(!path.isBlank(), "path cannot be blank");
-            if (path.contains(".")) {
-                this.close(path.split("\\.").length);
-            } else {
-                this.close();
-            }
-            return this;
         }
 
-        /**
-         * Sets a comment.
-         */
-        public Builder comment(@Nullable String comment) {
-            if (comment == null || comment.isBlank()) return this;
-            this.comment = comment;
-            return this;
-        }
-
-        /**
-         * Sets value for the section, applies any comment perviously set, then closes the section.
-         */
-        public <T> Builder set(T value) {
-            String path = this.fullPath();
-            this.config.config.set(path, value);
-            this.config.values.put(path, new Value<>(this.config.config, path, value));
-            this.consumeComment(this.config.config::setComment, this.config.comments::put);
-            ConfigConstants.LOG.info("{}={}", path, value);
-            this.stack.pop();
-            return this;
-        }
-
-        /**
-         * Returns the full dot-separated path for the current active section.
-         */
         private String fullPath() {
-            List<String> parts = new ArrayList<>(this.stack);
-            Collections.reverse(parts);
-            return String.join(".", parts);
+            return fullPath(this.stack);
         }
 
-        @SafeVarargs
-        private void consumeComment(BiConsumer<String, String>... consumers) {
+        private void consumeComment(String path) {
             if (this.comment == null) return;
-            String path = this.fullPath();
-            for (BiConsumer<String, String> consumer : consumers) {
-                consumer.accept(path, this.comment);
-            }
+            this.config.config.setComment(path, this.comment);
+            this.config.comments.put(path, this.comment);
             this.comment = null;
         }
     }

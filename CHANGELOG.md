@@ -9,6 +9,17 @@ This project adheres to [Semantic Versioning].
 
 ### Added
 
+- `Config#getComment()`.
+- `Config#push()`.
+- `Config#define()`.
+- `Config.Value#getRaw()`.
+- `Config.Value#set()`.
+- `Config.Value#save()`.
+- `Config.Value#clearCache()`.
+- `Config.Builder#push()`.
+- `Config.Builder#pop()`.
+- `Config.Builder#define()`.
+
 ### Changed
 
 - Version numbering now includes the Minecraft version as build metadata (e.g. `+26.2` for 
@@ -22,10 +33,31 @@ This project adheres to [Semantic Versioning].
   Consumers of GCL should not be interacting with these interface and classes, they are considered
   API internals.
   Package `impl` is now also annotated with `@ApiStatus.Internal`.
+- `Config#load()` will automatically save on first creation and when falling back to defaults
+  values.
+  Manual call to `Config#save()` upon first-load is redundant but safe.
+- `Config#comment()` is now a `Config.Builder` method, not a comment retrieval.
+  See `Config#getComment()` to retrieve comments.
+- `Config.Value` is no longer a `final` class.
+  Its constructors are now `protected`.
+- `Config.Value` now stores a default `Supplier<T>` rather than a default value.
+- `Config.Builder#comment()` now appends to the pending comment.
+  It no longer accepts `null` `String`.
+- Config key translation key format is now `modid.config_type.key`.
+- Config tooltip translation key format is now `modid.config_type.key.tooltip`.
+  If no tooltip translation exist for a given key, its comments will be used for the tooltip.
 
 ### Deprecated
 
 ### Removed
+
+- `Config#get()`.
+- `Config#getOrDefault()`.
+- `Config#set()`.
+- `Config#section()`.
+- `Config.Builder#section()`.
+- `Config.Builder#close()`.
+- `Config.Builder#set()`.
 
 ### Fixed
 

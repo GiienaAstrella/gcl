@@ -1,5 +1,7 @@
 package me.giiena.config.impl;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
@@ -8,6 +10,9 @@ import java.util.List;
 
 @SuppressWarnings("unused")
 public class ConfigCommon {
+    public static final Splitter DOT_SPLITTER = Splitter.on(".");
+    public static final Joiner DOT_JOINER = Joiner.on(".");
+
     /**
      * Returns {@link Identifier} in the GCL namespace.
      */
