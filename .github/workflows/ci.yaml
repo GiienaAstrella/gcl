@@ -97,7 +97,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Resolve snapshot coordinates
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         id: coords
         run: |
           GROUP=$(./gradlew -q properties | grep '^group:' | awk '{print $2}')
@@ -108,7 +108,7 @@ jobs:
           echo "group=${GROUP}" >> "$GITHUB_OUTPUT"
           echo "version=${MOD_VERSION}-${SHORT_SHA}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Configure Maven credentials
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         run: |
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<EOF
@@ -123,7 +123,7 @@ jobs:
           </settings>
           EOF
       - name: Publish Common snapshot
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -156,7 +156,7 @@ jobs:
               -DrepositoryId=github
           fi
       - name: Publish Fabric snapshot
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -177,7 +177,7 @@ jobs:
             -Durl=https://maven.pkg.github.com/${{ github.repository }} \
             -DrepositoryId=github
       - name: Publish NeoForge snapshot
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
