@@ -76,11 +76,35 @@ publishing {
         register('mavenJava', MavenPublication) {
             artifactId base.archivesName.get()
             from components.java
+            version = normalizeForMaven(project.version as String)
+        }
+        register('mavenJavaLocal', MavenPublication) {
+            artifactId base.archivesName.get()
+            from components.java
+            version = snapshotVersion(project.version as String)
         }
     }
     repositories {
         maven {
             url System.getenv('local_maven_url')
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
     }
+}
+
+afterEvaluate {
+    tasks.named('publishMavenJavaPublicationToMavenLocal') { enabled = false }
+    tasks.named('publishMavenJavaLocalPublicationToMavenRepository') { enabled = false }
+}
+
+static String normalizeForMaven(String version) {
+    return version.replace('+', '-')
+}
+
+static String snapshotVersion(String version) {
+    def (base, qualifier) = version.tokenize('+')
+    return "${base}-SNAPSHOT-${qualifier}"
 }

@@ -62,13 +62,22 @@ jobs:
             ) }}
           restore-keys: |
             loom-${{ runner.os }}-
+      - name: Resolve snapshot coordinates
+        if: github.event_name == 'push'
+        id: coords
+        run: |
+          BASE_VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
+          MOD_VERSION=$(echo "${BASE_VERSION}" | sed -E 's/\+.*//')
+          MC_VERSION=$(echo "${BASE_VERSION}" | sed -E 's/^[^+]*\+//')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=${MOD_VERSION}-${SHORT_SHA}+${MC_VERSION}" >> "$GITHUB_OUTPUT"
       - name: Build
         uses: nick-fields/retry@v4
         with:
           timeout_minutes: 30
           max_attempts: 5
           retry_wait_seconds: 30
-          command: ./gradlew build --stacktrace
+          command: ./gradlew build -Pversion=${{ steps.coords.outputs.version }} --stacktrace
       - name: Save Fabric Loom cache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache/save@v6
@@ -96,104 +105,10 @@ jobs:
           path: neoforge/build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
-      - name: Resolve snapshot coordinates
-        if: github.event_name == 'push'
-        id: coords
-        run: |
-          GROUP=$(./gradlew -q properties | grep '^group:' | awk '{print $2}')
-          BASE_VERSION=$(./gradlew -q properties | grep '^version:' | awk '{print $2}')
-          MOD_VERSION=$(echo "${BASE_VERSION}" | sed -E 's/\+.*//')
-          MC_VERSION=$(echo "${BASE_VERSION}" | sed -E 's/^[^+]*\+//')
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          echo "group=${GROUP}" >> "$GITHUB_OUTPUT"
-          echo "version=${MOD_VERSION}-${SHORT_SHA}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
-      - name: Configure Maven credentials
-        if: github.event_name == 'push'
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings>
-            <servers>
-              <server>
-                <id>github</id>
-                <username>\${env.GITHUB_ACTOR}</username>
-                <password>\${env.GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-      - name: Publish Common snapshot
+      - name: Publish snapshots
         if: github.event_name == 'push'
         env:
+          local_maven_url: https://maven.pkg.github.com/${{ github.repository }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          MAIN_JAR=$(ls common/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
-          SOURCES_JAR=$(ls common/build/libs/*-sources.jar 2>/dev/null || true)
-          JAVADOC_JAR=$(ls common/build/libs/*-javadoc.jar 2>/dev/null || true)
-          if [ -n "$SOURCES_JAR" ] && [ -n "$JAVADOC_JAR" ]; then
-            mvn -B deploy:deploy-file \
-              -Dfile="$MAIN_JAR" \
-              -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
-              -Dclassifiers=sources,javadoc \
-              -Dtypes=jar,jar \
-              -DgroupId=${{ steps.coords.outputs.group }} \
-              -DartifactId=gcl-common \
-              -Dversion=${{ steps.coords.outputs.version }} \
-              -Dpackaging=jar \
-              -DgeneratePom=true \
-              -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-              -DrepositoryId=github
-          else
-            mvn -B deploy:deploy-file \
-              -Dfile="$MAIN_JAR" \
-              -DgroupId=${{ steps.coords.outputs.group }} \
-              -DartifactId=gcl-common \
-              -Dversion=${{ steps.coords.outputs.version }} \
-              -Dpackaging=jar \
-              -DgeneratePom=true \
-              -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-              -DrepositoryId=github
-          fi
-      - name: Publish Fabric snapshot
-        if: github.event_name == 'push'
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          MAIN_JAR=$(ls fabric/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
-          SOURCES_JAR=$(ls fabric/build/libs/*-sources.jar)
-          JAVADOC_JAR=$(ls fabric/build/libs/*-javadoc.jar)
-          mvn -B deploy:deploy-file \
-            -Dfile="$MAIN_JAR" \
-            -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
-            -Dclassifiers=sources,javadoc \
-            -Dtypes=jar,jar \
-            -DgroupId=${{ steps.coords.outputs.group }} \
-            -DartifactId=gcl-fabric \
-            -Dversion=${{ steps.coords.outputs.version }} \
-            -Dpackaging=jar \
-            -DgeneratePom=true \
-            -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-            -DrepositoryId=github
-      - name: Publish NeoForge snapshot
-        if: github.event_name == 'push'
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          MAIN_JAR=$(ls neoforge/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
-          SOURCES_JAR=$(ls neoforge/build/libs/*-sources.jar)
-          JAVADOC_JAR=$(ls neoforge/build/libs/*-javadoc.jar)
-          mvn -B deploy:deploy-file \
-            -Dfile="$MAIN_JAR" \
-            -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
-            -Dclassifiers=sources,javadoc \
-            -Dtypes=jar,jar \
-            -DgroupId=${{ steps.coords.outputs.group }} \
-            -DartifactId=gcl-neoforge \
-            -Dversion=${{ steps.coords.outputs.version }} \
-            -Dpackaging=jar \
-            -DgeneratePom=true \
-            -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-            -DrepositoryId=github
+        run: ./gradlew publish -Pversion=${{ steps.coords.outputs.version }} --stacktrace
