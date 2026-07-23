@@ -68,102 +68,58 @@ jobs:
             --draft \
             --title "${{ github.ref_name }}" \
             --notes-file RELEASE.md
-      - name: Resolve release coordinates
-        id: coords
-        run: |
-          GROUP=$(./gradlew -q properties | grep '^group:' | awk '{print $2}')
-          TAG_VERSION=${GITHUB_REF_NAME#v}
-          MOD_VERSION=$(echo "${TAG_VERSION}" | sed -E 's/\+.*//')
-          MC_VERSION=$(echo "${TAG_VERSION}" | sed -E 's/^[^+]*\+//')
-          echo "group=${GROUP}" >> "$GITHUB_OUTPUT"
-          echo "version=${MOD_VERSION}-${MC_VERSION}" >> "$GITHUB_OUTPUT"
-      - name: Configure Maven credentials
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml <<EOF
-          <settings>
-            <servers>
-              <server>
-                <id>github</id>
-                <username>\${env.GITHUB_ACTOR}</username>
-                <password>\${env.GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-      - name: Publish Common release
+      - name: Upload Common artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: common
+          path: common/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Fabric artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: fabric
+          path: fabric/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload NeoForge artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: neoforge
+          path: neoforge/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish artifacts
         env:
+          local_maven_url: https://maven.pkg.github.com/${{ github.repository }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          MAIN_JAR=$(ls common/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
-          SOURCES_JAR=$(ls common/build/libs/*-sources.jar 2>/dev/null || true)
-          JAVADOC_JAR=$(ls common/build/libs/*-javadoc.jar 2>/dev/null || true)
-          if [ -n "$SOURCES_JAR" ] && [ -n "$JAVADOC_JAR" ]; then
-            mvn -B deploy:deploy-file \
-              -Dfile="$MAIN_JAR" \
-              -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
-              -Dclassifiers=sources,javadoc \
-              -Dtypes=jar,jar \
-              -DgroupId=${{ steps.coords.outputs.group }} \
-              -DartifactId=gcl-common \
-              -Dversion=${{ steps.coords.outputs.version }} \
-              -Dpackaging=jar \
-              -DgeneratePom=true \
-              -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-              -DrepositoryId=github
-          else
-            mvn -B deploy:deploy-file \
-              -Dfile="$MAIN_JAR" \
-              -DgroupId=${{ steps.coords.outputs.group }} \
-              -DartifactId=gcl-common \
-              -Dversion=${{ steps.coords.outputs.version }} \
-              -Dpackaging=jar \
-              -DgeneratePom=true \
-              -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-              -DrepositoryId=github
-          fi
-      - name: Publish Fabric release
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          MAIN_JAR=$(ls fabric/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
-          SOURCES_JAR=$(ls fabric/build/libs/*-sources.jar)
-          JAVADOC_JAR=$(ls fabric/build/libs/*-javadoc.jar)
-          mvn -B deploy:deploy-file \
-            -Dfile="$MAIN_JAR" \
-            -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
-            -Dclassifiers=sources,javadoc \
-            -Dtypes=jar,jar \
-            -DgroupId=${{ steps.coords.outputs.group }} \
-            -DartifactId=gcl-fabric \
-            -Dversion=${{ steps.coords.outputs.version }} \
-            -Dpackaging=jar \
-            -DgeneratePom=true \
-            -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-            -DrepositoryId=github
-      - name: Publish NeoForge release
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          MAIN_JAR=$(ls neoforge/build/libs/*.jar | grep -v -- '-sources.jar' | grep -v -- '-javadoc.jar')
-          SOURCES_JAR=$(ls neoforge/build/libs/*-sources.jar)
-          JAVADOC_JAR=$(ls neoforge/build/libs/*-javadoc.jar)
-          mvn -B deploy:deploy-file \
-            -Dfile="$MAIN_JAR" \
-            -Dfiles="$SOURCES_JAR,$JAVADOC_JAR" \
-            -Dclassifiers=sources,javadoc \
-            -Dtypes=jar,jar \
-            -DgroupId=${{ steps.coords.outputs.group }} \
-            -DartifactId=gcl-neoforge \
-            -Dversion=${{ steps.coords.outputs.version }} \
-            -Dpackaging=jar \
-            -DgeneratePom=true \
-            -Durl=https://maven.pkg.github.com/${{ github.repository }} \
-            -DrepositoryId=github
+        run: ./gradlew publish --stacktrace
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release edit "${{ github.ref_name }}" --draft=false
+      - name: Delete pre-release Common packages
+        continue-on-error: true
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'me.giiena.config.gcl-common'
+          package-type: 'maven'
+          min-versions-to-keep: 0
+          ignore-versions: '^\d+\.\d+\.\d+(-\d+\.\d+)?$'
+      - name: Delete pre-release Fabric packages
+        continue-on-error: true
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'me.giiena.config.gcl-fabric'
+          package-type: 'maven'
+          min-versions-to-keep: 0
+          ignore-versions: '^\d+\.\d+\.\d+(-\d+\.\d+)?$'
+      - name: Delete pre-release NeoForge packages
+        continue-on-error: true
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'me.giiena.config.gcl-neoforge'
+          package-type: 'maven'
+          min-versions-to-keep: 0
+          ignore-versions: '^\d+\.\d+\.\d+(-\d+\.\d+)?$'
