@@ -8,5 +8,6 @@
   "gui.gcl.config.server": "Server Configuration",
   "gui.gcl.config.server.title": "%s: Server Configuration",
   "gui.gcl.config.title": "%s Configuration",
-  "gui.gcl.config.tooltip.disabled.online": "You cannot edit this file while connected to server!"
+  "gui.gcl.config.tooltip.disabled.online": "You cannot edit this file while connected to server!",
+  "gui.gcl.config_sync.disconnect": "Cannot synchronize configuration"
 }

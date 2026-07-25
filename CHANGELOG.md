@@ -19,6 +19,7 @@ This project adheres to [Semantic Versioning].
 - `Config.Builder#push()`.
 - `Config.Builder#pop()`.
 - `Config.Builder#define()`.
+- `NestedMap`.
 
 ### Changed
 
@@ -46,6 +47,9 @@ This project adheres to [Semantic Versioning].
 - Config key translation key format is now `modid.config_type.key`.
 - Config tooltip translation key format is now `modid.config_type.key.tooltip`.
   If no tooltip translation exist for a given key, its comments will be used for the tooltip.
+- Common configurations are now synced during the configuration phase.
+  Previously, they were synced during the play phase.
+- Synced common configuration values are now cleared upon disconnection from the logical server.
 
 ### Deprecated
 

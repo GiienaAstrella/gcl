@@ -1,24 +1,64 @@
 package me.giiena.config.impl;
 
 import me.giiena.config.api.Config;
+import me.giiena.config.api.NestedMap;
+import me.giiena.config.impl.network.ConfigAckPayload;
 import me.giiena.config.impl.network.ConfigPayload;
+import me.giiena.config.impl.network.ConfigSyncTask;
 import me.giiena.config.impl.platform.Services;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.protocol.configuration.ServerConfigurationPacketListener;
+import net.minecraft.server.network.ConfigurationTask;
+import net.minecraft.server.network.ServerConfigurationPacketListenerImpl;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @SuppressWarnings("LoggingSimilarMessage")
 public class ConfigManager {
+    private static final NestedMap<Object, String, ConfigSyncTask> PENDING_CONFIG_TASKS =
+            new NestedMap<>();
+
     /**
-     * Player login event handler.
-     * Syncs all {@link Config.Type#COMMON} config managed by the library with {@code player}.
+     * Configuration phase event handler.
+     * Syncs all {@link Config.Type#COMMON} config managed by the library.
      */
-    public static void onPlayerLogin(ServerPlayer player) {
+    public static void onConfigureConnection(ServerConfigurationPacketListener listener,
+                                             Consumer<ConfigurationTask> queuer,
+                                             Consumer<ConfigurationTask.Type> finisher) {
+        String player;
+        if (listener instanceof ServerConfigurationPacketListenerImpl impl) {
+            player = impl.getOwner().name();
+        } else {
+            player = "UNKNOWN PLAYER";
+        }
+
         for (Config config : ConfigRegistryImpl.getAllCommons()) {
             ConfigConstants.LOG.info("Syncing common config for {} with {}",
-                    config.getModID(), player.getName().getString());
-            Services.PLATFORM.sendPacketToClient(player, new ConfigPayload(config.getModID(),
-                    config.toml()));
+                    config.getModID(),
+                    player);
+            ConfigSyncTask task = new ConfigSyncTask(finisher, config.getModID(), config.toml());
+            PENDING_CONFIG_TASKS.put(listener, config.getModID(), task);
+            queuer.accept(task);
+        }
+    }
+
+    /**
+     * Configuration phase acknowledgement event handler.
+     */
+    public static void onConfigConnectionAck(Object listener, ConfigAckPayload payload) {
+        ConfigSyncTask task = PENDING_CONFIG_TASKS.get(listener, payload.modID());
+        if (task == null) return;
+        task.ack();
+        PENDING_CONFIG_TASKS.remove(listener, payload.modID());
+    }
+
+    /**
+     * Disconnect event handler.
+     */
+    public static void onDisconnect() {
+        for (Config config : ConfigRegistryImpl.getAllCommons()) {
+            ConfigConstants.LOG.info("Clearing synced common config for {}", config.getModID());
+            config.clearSyncedValues();
         }
     }
 

@@ -9,6 +9,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import org.jspecify.annotations.NonNull;
 
@@ -42,5 +43,10 @@ public class ConfigNeoForgeClient {
                         }
                     });
         });
+    }
+
+    @SubscribeEvent
+    private static void onDisconnect(ClientPlayerNetworkEvent.LoggingOut event) {
+        ConfigManager.onDisconnect();
     }
 }
