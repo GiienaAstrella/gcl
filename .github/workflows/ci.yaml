@@ -38,9 +38,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-cleanup: on-success
-          dependency-graph: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+          dependency-graph: ${{ github.event_name == 'push' &&
+            github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
             'generate-and-submit' || 'disabled' }}
       - name: Restore Fabric Loom cache
         id: loom-cache
@@ -48,7 +48,7 @@ jobs:
         with:
           path: .gradle/loom-cache
           key: >-
-            loom-${{ runner.os }}-${{ hashFiles(
+            loom-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles(
               '**/build.gradle',
               '**/build.gradle.kts',
               '**/settings.gradle',
@@ -61,6 +61,7 @@ jobs:
               'build-logic/**/*.kt'
             ) }}
           restore-keys: |
+            loom-${{ runner.os }}-${{ github.ref_name }}-
             loom-${{ runner.os }}-
       - name: Resolve snapshot coordinates
         if: github.event_name == 'push'
@@ -79,11 +80,23 @@ jobs:
           retry_wait_seconds: 30
           command: ./gradlew build -Pversion=${{ steps.coords.outputs.version }} --stacktrace
       - name: Save Fabric Loom cache
-        if: github.ref == 'refs/heads/main'
+        if: steps.loom-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: .gradle/loom-cache
-          key: ${{ steps.loom-cache.outputs.cache-primary-key }}
+          key: >-
+            loom-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles(
+              '**/build.gradle',
+              '**/build.gradle.kts',
+              '**/settings.gradle',
+              '**/settings.gradle.kts',
+              '**/gradle.properties',
+              'gradle/libs.versions.toml',
+              'gradle/wrapper/gradle-wrapper.properties',
+              'build-logic/**/*.gradle',
+              'build-logic/**/*.gradle.kts',
+              'build-logic/**/*.kt'
+            ) }}
       - name: Upload Common artifacts
         uses: actions/upload-artifact@v7
         with:

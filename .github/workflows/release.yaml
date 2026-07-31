@@ -13,6 +13,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Resolve source branch
+        id: source-branch
+        run: |
+          BRANCH=$(git branch -r --contains "${{ github.sha }}^" --format='%(refname:short)' | grep -v HEAD | head -n1 | sed 's#^origin/##')
+          echo "name=${BRANCH}" >> "$GITHUB_OUTPUT"
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -35,7 +42,7 @@ jobs:
         with:
           path: .gradle/loom-cache
           key: >-
-            loom-${{ runner.os }}-${{ hashFiles(
+            loom-${{ runner.os }}-${{ steps.source-branch.outputs.name }}-${{ hashFiles(
               '**/build.gradle',
               '**/build.gradle.kts',
               '**/settings.gradle',
@@ -48,6 +55,7 @@ jobs:
               'build-logic/**/*.kt'
             ) }}
           restore-keys: |
+            loom-${{ runner.os }}-${{ steps.source-branch.outputs.name }}-
             loom-${{ runner.os }}-
       - name: Build
         uses: nick-fields/retry@v4
