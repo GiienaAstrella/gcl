@@ -5,7 +5,7 @@ All notable changes in GCL will be documented in this file.
 The format is based on [Keep a Changelog].
 This project adheres to [Semantic Versioning].
 
-## [UNRELEASED]
+## [0.2.0+26.2] - 2026-07-31
 
 ### Added
 
@@ -23,7 +23,7 @@ This project adheres to [Semantic Versioning].
 
 ### Changed
 
-- Version numbering now includes the Minecraft version as build metadata (e.g. `+26.2` for 
+- Version numbering now includes the Minecraft version as build metadata (e.g. `+26.2` for
   Minecraft 26.2).
   Maven does not support `+`, so replace it with `-`.
   For example, `0.2.0+26.2` becomes `0.2.0-26.2`.
@@ -51,8 +51,6 @@ This project adheres to [Semantic Versioning].
   Previously, they were synced during the play phase.
 - Synced common configuration values are now cleared upon disconnection from the logical server.
 
-### Deprecated
-
 ### Removed
 
 - `Config#get()`.
@@ -62,10 +60,6 @@ This project adheres to [Semantic Versioning].
 - `Config.Builder#section()`.
 - `Config.Builder#close()`.
 - `Config.Builder#set()`.
-
-### Fixed
-
-### Security
 
 ## [0.1.0] - 2026-07-21
 
@@ -79,7 +73,7 @@ This project adheres to [Semantic Versioning].
   On Fabric, this is done as an integration with [Mod Menu].
 
 [0.1.0]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.1.0
+[0.2.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.2.0+26.2
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Mod Menu]: https://github.com/TerraformersMC/ModMenu
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[UNRELEASED]: https://github.com/GiienaAstrella/gcl/compare/v0.1.0...HEAD
