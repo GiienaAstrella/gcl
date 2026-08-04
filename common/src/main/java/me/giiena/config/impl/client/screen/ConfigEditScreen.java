@@ -17,6 +17,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsSubScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextColor;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -325,12 +327,19 @@ public class ConfigEditScreen extends OptionsSubScreen {
 
     @Nullable
     protected Component getTooltipComponent(final String path) {
+        MutableComponent tooltip = Component.empty();
+        tooltip.append(Component.literal(path).withColor(TextColor.GOLD));
+        tooltip.append(CommonComponents.NEW_LINE);
+        tooltip.append(CommonComponents.NEW_LINE);
+
         String translation = this.translationKey(path) + ".tooltip";
         if (TranslationChecker.has(this.config, translation)) {
-            return Component.translatable(translation);
+            tooltip.append(Component.translatable(translation));
         } else {
-            return this.config.getComment(path).map(Component::literal).orElse(null);
+            this.config.getComment(path).map(Component::literal).ifPresent(tooltip::append);
         }
+
+        return tooltip;
     }
 
     protected String translationKey(final String path) {
