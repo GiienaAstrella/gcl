@@ -67,11 +67,9 @@ public class ConfigListScreen extends OptionsSubScreen {
                     .width(BIG_BUTTON_WIDTH)
                     .build();
             MutableComponent tooltip = Component.empty();
-            //noinspection DataFlowIssue
             if (entry.getValue().getType() == Config.Type.COMMON &&
                     this.minecraft.getCurrentServer() != null &&
-                    (!this.minecraft.hasSingleplayerServer() ||
-                            !this.minecraft.getSingleplayerServer().isPublished())) {
+                    !this.minecraft.hasSingleplayerServer()) {
                 btn.active = false;
                 tooltip.append(TOOLTIP_CANNOT_EDIT_ONLINE.copy().withColor(TextColor.RED));
                 tooltip.append(CommonComponents.NEW_LINE);

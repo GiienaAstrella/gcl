@@ -203,7 +203,7 @@ public class ConfigEditScreen extends OptionsSubScreen {
                 Button.DEFAULT_WIDTH,
                 Button.DEFAULT_HEIGHT,
                 this.getTranslationComponent(path));
-        box.setEditable(true);
+        box.setEditable(this.isElementEditable());
         box.setResponder(resp -> {
             if (!resp.equals(source.get())) {
                 this.onChanged();
@@ -233,7 +233,7 @@ public class ConfigEditScreen extends OptionsSubScreen {
                 Button.DEFAULT_WIDTH,
                 Button.DEFAULT_HEIGHT,
                 this.getTranslationComponent(path));
-        box.setEditable(true);
+        box.setEditable(this.isElementEditable());
         box.setFilter(i -> {
             if (i.isEmpty()) return true;
             try {
@@ -303,9 +303,15 @@ public class ConfigEditScreen extends OptionsSubScreen {
                 })
                 .size(Button.DEFAULT_WIDTH, Button.DEFAULT_HEIGHT)
                 .build();
+        btn.active = this.isElementEditable();
         return new Element(this.getTranslationComponent(path),
                 this.getTooltipComponent(path),
                 btn);
+    }
+
+    protected boolean isElementEditable() {
+        if (this.config.getType() != Config.Type.COMMON) return true;
+        return this.minecraft.getCurrentServer() == null || this.minecraft.hasSingleplayerServer();
     }
 
     protected Component getTranslationComponent(final String path) {

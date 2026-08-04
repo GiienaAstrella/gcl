@@ -11,11 +11,19 @@ This project adheres to [Semantic Versioning].
 
 ### Changed
 
+- Config button integrations now always bypass the list screen if the mod only registers one type
+  of configuration.
+  Showing the list screen only in development presents opportunities for bugs to crop up.
+  But with different behaviors, they are hard to spot in development.
+
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- Fixed an issue where common config is still configurable from the client side config screen when
+  connected to a dedicated server. ([#2])
 
 ### Security
 
@@ -86,6 +94,7 @@ This project adheres to [Semantic Versioning].
   On NeoForge, this is done natively.
   On Fabric, this is done as an integration with [Mod Menu].
 
+[#2]: https://github.com/GiienaAstrella/gcl/issues/2
 [0.1.0]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.1.0
 [0.2.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.2.0+26.2
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/

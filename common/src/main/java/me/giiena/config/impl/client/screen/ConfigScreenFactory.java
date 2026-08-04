@@ -11,7 +11,7 @@ public class ConfigScreenFactory {
             String modName,
             Screen previous,
             final EnumMap<Config.Type, Config> configs) {
-        if (configs.size() == 1 && !Services.PLATFORM.isDevelopmentEnvironment()) {
+        if (configs.size() == 1) {
             return new ConfigEditScreen(modName, previous, configs.values().iterator().next());
         } else {
             return new ConfigListScreen(modName, previous, configs);
