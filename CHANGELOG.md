@@ -5,9 +5,7 @@ All notable changes in GCL will be documented in this file.
 The format is based on [Keep a Changelog].
 This project adheres to [Semantic Versioning].
 
-## [UNRELEASED]
-
-### Added
+## [0.3.0+26.2] - 2026-08-21
 
 ### Changed
 
@@ -18,16 +16,10 @@ This project adheres to [Semantic Versioning].
 - Config edit screen now shows the config key on the tooltip for each entry.
 - Updated minimum NeoForge version to 26.2.0.57.
 
-### Deprecated
-
-### Removed
-
 ### Fixed
 
 - Fixed an issue where common config is still configurable from the client side config screen when
   connected to a dedicated server. ([#2])
-
-### Security
 
 ## [0.2.0+26.2] - 2026-07-31
 
@@ -99,7 +91,7 @@ This project adheres to [Semantic Versioning].
 [#2]: https://github.com/GiienaAstrella/gcl/issues/2
 [0.1.0]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.1.0
 [0.2.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.2.0+26.2
+[0.3.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.3.0+26.2
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Mod Menu]: https://github.com/TerraformersMC/ModMenu
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
-[UNRELEASED]: https://github.com/GiienaAstrella/gcl/compare/v0.2.0+26.2...HEAD
