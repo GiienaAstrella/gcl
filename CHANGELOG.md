@@ -16,6 +16,7 @@ This project adheres to [Semantic Versioning].
   Showing the list screen only in development presents opportunities for bugs to crop up.
   But with different behaviors, they are hard to spot in development.
 - Config edit screen now shows the config key on the tooltip for each entry.
+- Updated minimum NeoForge version to 26.2.0.57.
 
 ### Deprecated
 
