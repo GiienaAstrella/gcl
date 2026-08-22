@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning].
 ### Changed
 
 - Comments are now prepended with a space on the config file.
+- Increased max character count on String value input boxes 32 => 250.
 
 ### Deprecated
 

@@ -205,6 +205,7 @@ public class ConfigEditScreen extends OptionsSubScreen {
                 Button.DEFAULT_WIDTH,
                 Button.DEFAULT_HEIGHT,
                 this.getTranslationComponent(path));
+        box.setMaxLength(250);
         box.setEditable(this.isElementEditable());
         box.setResponder(resp -> {
             if (!resp.equals(source.get())) {
