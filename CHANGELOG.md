@@ -11,6 +11,8 @@ This project adheres to [Semantic Versioning].
 
 ### Changed
 
+- Comments are now prepended with a space on the config file.
+
 ### Deprecated
 
 ### Removed

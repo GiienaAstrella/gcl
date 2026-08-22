@@ -433,7 +433,7 @@ public class Config {
 
         private void consumeComment(String path) {
             if (this.comment == null) return;
-            this.config.config.setComment(path, this.comment);
+            this.config.config.setComment(path, " " + this.comment);
             this.config.comments.put(path, this.comment);
             this.comment = null;
         }
