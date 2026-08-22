@@ -5,6 +5,12 @@ All notable changes in GCL will be documented in this file.
 The format is based on [Keep a Changelog].
 This project adheres to [Semantic Versioning].
 
+## [0.3.1+26.2] - 2026-08-21
+
+### Fixed
+
+- Fix `IllegalAccessError` when accessing the configuration screen on Fabric. ([#3])
+
 ## [0.3.0+26.2] - 2026-08-21
 
 ### Changed
@@ -89,9 +95,11 @@ This project adheres to [Semantic Versioning].
   On Fabric, this is done as an integration with [Mod Menu].
 
 [#2]: https://github.com/GiienaAstrella/gcl/issues/2
+[#3]: https://github.com/GiienaAstrella/gcl/issues/3
 [0.1.0]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.1.0
 [0.2.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.2.0+26.2
 [0.3.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.3.0+26.2
+[0.3.1+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.3.1+26.2
 [Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
 [Mod Menu]: https://github.com/TerraformersMC/ModMenu
 [Semantic Versioning]: https://semver.org/spec/v2.0.0.html
