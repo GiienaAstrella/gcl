@@ -25,6 +25,7 @@
             "me.giiena.config.impl.integration.ModMenuPlugin"
         ]
     },
+    "accessWidener": "${mod_id}.accesswidener",
     "depends": {
         "fabricloader": ">=${fabric_loader_version}",
         "fabric-api": "${fabric_version_range}",

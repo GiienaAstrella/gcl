@@ -17,6 +17,8 @@ This project adheres to [Semantic Versioning].
 
 ### Fixed
 
+- Fix `IllegalAccessError` when accessing the configuration screen on Fabric. ([#3])
+
 ### Security
 
 ## [0.3.0+26.2] - 2026-08-21
@@ -103,6 +105,7 @@ This project adheres to [Semantic Versioning].
   On Fabric, this is done as an integration with [Mod Menu].
 
 [#2]: https://github.com/GiienaAstrella/gcl/issues/2
+[#3]: https://github.com/GiienaAstrella/gcl/issues/3
 [0.1.0]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.1.0
 [0.2.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.2.0+26.2
 [0.3.0+26.2]: https://github.com/GiienaAstrella/gcl/releases/tag/v0.3.0+26.2
